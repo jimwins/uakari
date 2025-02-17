@@ -41,7 +41,7 @@ class Entity
                 ->getProperties(\ReflectionProperty::IS_PUBLIC);
 
         foreach ($properties as $property) {
-            if ($property->getAttributes(PrimaryKey::class)) {
+            if ($property->getAttributes(PrimaryKey::class) !== []) {
                 return $property->getName();
             }
         }
@@ -54,7 +54,7 @@ class Entity
         $entity = new static();
 
         foreach ($args as $name => $arg) {
-            $entity->$name = $arg;
+            $entity->{$name} = $arg;
         }
 
         /**
@@ -69,9 +69,9 @@ class Entity
         foreach ($properties as $property) {
             if (
                 !$property->isInitialized($entity) &&
-                !$property->getType()?->allowsNull() &&
-                !$property->getAttributes(SqlDefault::class) &&
-                !$property->getAttributes(PrimaryKey::class)
+                !($property->getType()?->allowsNull() ?? false) &&
+                $property->getAttributes(SqlDefault::class) === [] &&
+                $property->getAttributes(PrimaryKey::class) === []
             ) {
                 $propertyName = $property->getName();
                 throw new \ValueError("Property '{$propertyName}' not initialized");
@@ -90,7 +90,7 @@ class Entity
         $columnsMeta = [];
         for ($i = 0; $i < $columns; $i++) {
             $meta = $res->getColumnMeta($i);
-            if (!$meta) {
+            if ($meta === false) {
                 throw new \ValueError("Unable to get metadata for column {$i}");
             }
             /** @phpstan-ignore offsetAccess.notFound, cast.string */
@@ -165,7 +165,7 @@ class Entity
             throw new \ValueError("Property '{$propertyName}' is not nullable");
         }
 
-        $this->$propertyName = match ($propertyType->getName()) {
+        $this->{$propertyName} = match ($propertyType->getName()) {
             'DateTime', '?DateTime' => match (true) {
                 is_null($value) => null,
                 is_string($value) => new \DateTime($value),
@@ -328,10 +328,10 @@ class Entity
             $value = $this->{$property->getName()};
             $onUpdate = $property->getAttributes(SqlOnUpdate::class);
 
-            if ($property->getAttributes(PrimaryKey::class)) {
+            if ($property->getAttributes(PrimaryKey::class) !== []) {
                 $primaryKeyColumn = $columnName;
                 $primaryKeyValue = $value;
-            } elseif ($onUpdate) {
+            } elseif ($onUpdate !== []) {
                 $updateValue = $onUpdate[0]->getArguments()[0];
                 if ($updateValue instanceof DefaultConstant) {
                     $columns[] = [ $columnName, $updateValue->value ];
