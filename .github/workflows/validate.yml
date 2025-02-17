@@ -1,0 +1,49 @@
+name: "Validation"
+
+on: [push]
+
+jobs:
+  run:
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      matrix:
+        operating-system: [ubuntu-latest]
+        php-versions: ['8.3', '8.4', '8.5']
+    name: PHP ${{ matrix.php-versions }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-versions }}
+          extensions: sqlite3
+          coverage: xdebug
+          tools: composer, cs2pr, phpcs, phpstan, phpunit
+
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-${{ matrix.php-versions }}-composer-${{ hashFiles('**/composer.json') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.php-versions }}-composer-
+
+      - name: Install dependencies
+        run: composer install --prefer-dist
+
+      - name: PHPStan Static Analysis
+        run: phpstan analyse
+
+      - name: Coding Standard Check
+        run: phpcs -q --report=checkstyle | cs2pr
+
+      - name: Setup problem matchers for PHPUnit
+        run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
+
+      - name: PHPUnit Tests
+        run: phpunit -c ./phpunit.xml --coverage-text
