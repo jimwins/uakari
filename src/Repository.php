@@ -78,7 +78,7 @@ class Repository implements RepositoryInterface
     {
         $schemaName = ($this->className)::getSchemaName();
         $res = $this->pdo->query("SELECT * FROM \"{$schemaName}\"");
-        if (!$res) {
+        if ($res === false) {
             throw new \Exception("Failed to prepare and execute SQL statement");
         }
 
@@ -102,7 +102,7 @@ class Repository implements RepositoryInterface
         $primaryKeyName = ($this->className)::getPrimaryKeyName();
 
         /** @phpstan-ignore argument.type */
-        return $this->get($entity->$primaryKeyName);
+        return $this->get($entity->{$primaryKeyName});
     }
 
     /**
@@ -116,7 +116,7 @@ class Repository implements RepositoryInterface
         $stmt = $this->pdo->prepare(
             "DELETE FROM \"{$schemaName}\" WHERE \"{$primaryKeyName}\" = ?"
         );
-        $stmt->execute([ $entity->$primaryKeyName ]);
+        $stmt->execute([ $entity->{$primaryKeyName} ]);
 
         if (!$stmt) {
             throw new \Exception("Failed to prepare and execute SQL statement");
