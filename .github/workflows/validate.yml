@@ -46,4 +46,4 @@ jobs:
         run: echo "::add-matcher::${{ runner.tool_cache }}/phpunit.json"
 
       - name: PHPUnit Tests
-        run: phpunit -c ./phpunit.xml
+        run: phpunit -c ./phpunit.xml --coverage-text
